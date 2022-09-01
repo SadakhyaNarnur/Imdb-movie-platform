@@ -1,0 +1,141 @@
+MongoDB Queries
+Inserting documents into collections:
+Adding documents into service requests.
+db.service_requests.insertOne({
+    "complaint_severity": "m",
+    "service_agent_name": "Sandeshn",
+    "service_id": "400000",
+    "date_of_complaint": "2022-01-02",
+    "complaint_description": "Buffering",
+    "emailid": "OoececBAnkd@yahoo.com"
+})
+Adding a user into Users collection.
+db.users.insertOne({
+"emailid": "new_user@gmail.com",
+"phoneno": "322-370-1228",
+"name": "Ratan Harry",
+"dob": "2001-11-12",
+"password": "qwerty12#", 
+"account_create_date": "2010-10-07",
+"no_of_profiles": "0",
+"preferred_language": "English",
+"profiles": [],
+"billing_date": "2022-04-03",
+"status": "Active",
+"payment_method":"DEBIT/CREDIT"
+});
+
+Queries for features: 
+New user registers into the application : 
+db.users.insertOne({"emailid": "new_user@gmail.com","phoneno": "322-370-1228","name": "Ratan Harry","dob": new Date("2001-11-12"),"password": "qwerty12#", "account_create_date":  new Date("2010-10-07"),"no_of_profiles": 0,"preferred_language": "English","profiles": [],"billing_date":  new Date("2022-04-03"), "status": "Active","payment_method":"DEBIT/CREDIT"})
+
+User adds a profile into his account: 
+db.users.updateOne({"emailid":"new_user@gmail.com"},{ "$push": {"profiles": {"profile_name": "Profile1","service_id": 80012, "profile_history": [],"profile_my_list": [],"complaints": []}}})
+
+Updating no_of_profiles count:
+db.users.updateOne({ "emailid": "new_user@gmail.com" },{ "$inc": { "no_of_profiles": 1 } })
+Deleting a Profile:
+db.users.update({"emailid":"0omsUvRjUHZlzEPT@msn.com"},{$pull:{"profiles":{"profile_name":"sush"}}})
+Updating the no_of_profiles:
+db.users.updateOne({ "emailid": "0omsUvRjUHZlzEPT@msn.com" },{ "$inc": { "no_of_profiles": -1 } })
+
+Adding a movie to Profile watching list:
+var movie = db.movies.findOne({"Title":"Guardians of the Galaxy"})
+var movieId = movie._id
+var movie_rank = movie.Rank
+db.users.updateOne({ "profiles.profile_name" : "Profile1", "emailid":"new_user@gmail.com"}, { "$push": { "profiles.$.profile_my_list": { "imdb_rank": movie_rank, "movie_id":movieId}}})
+
+Adding a movie to Profiles’ history:
+var movie = db.movies.findOne({"Title":"Prometheus"})
+var movieId = movie._id
+var movie_rank = movie.Rank
+db.users.updateOne({ "profiles.profile_name" : "Profile1", "emailid":"new_user@gmail.com"}, { "$push": { "profiles.$.profile_history": { "view_timestamp":new Date(Date.now()), "imdb_rank": movie_rank, "movie_id":movieId}}})
+
+Deleting a movie from Profiles’ watching list:
+var movie = db.movies.findOne({"Title":"Guardians of the Galaxy"})
+var movieId = movie._id
+var movie_rank = movie.Rank
+db.users.update({"emailid":"new_user@gmail.com", "profiles.profile_name": "Profile1"}, { $pull: {"profiles.$.profile_my_list": {imdb_rank: movie_rank} } }, { multi: true })
+
+Deleting a movie from Profiles’ history:
+Delete entire history
+db.users.updateOne({"emailid":"new_user@gmail.com","profiles.profile_name":"Profile1"},{$unset:{"profiles.$.profile_history":""}},{multi:true})
+Delete a specific movie from the history
+var movie = db.movies.findOne({"Title":"Guardians of the Galaxy"})
+var movie_rank = movie.Rank
+db.users.update({"emailid":"new_user@gmail.com", "profiles.profile_name": "Profile1"}, { $pull: {"profiles.$.profile_history": {imdb_rank: movie_rank} } }, { multi: true })
+
+Adding a new movie:
+db.movies.insertOne({"imdb_rank": "1001", "Title": "Fantastic Beasts - The Secrets of Dumbledore", "Genre": ["Action", "Adventure", "Sci-Fi"], "Description": "Professor Albus Dumbledore knows the powerful, dark wizard Gellert Grindelwald is moving to seize control of the wizarding world. ", "Director": "David Yates", "Actors": "", "Year": "2022", "Runtime (Minutes)": "121", "Rating": "8.1",  "Votes": "757074", "Revenue (Millions)": "333.13", "Metascore": "80"})
+
+Deleting a movie from Movie Collection:
+db.movies.deleteOne({"Title":"Fantastic Beasts - The Secrets of Dumbledore"});
+
+Creating a Service request:
+db.service_requests.insertOne({service_id:400019, date_of_complaint:new Date(Date.now()), complaint_description:"Problems with the subtitles or captions, including quality or availability", emailid:"uqCdy@hotmail.com"})
+
+	Service agent acknowledges the request raised:
+db.service_requests.updateOne({service_id:400019}, {$set:{complaint_severity: "h", service_agent_name:"Preetha"}},{upsert:true})
+
+Adding a reference to this complaint raised in the data of the profile
+var serviceid = db.service_requests.findOne({“service_id”:400019})
+var complaintId = serviceid._id
+db.users.updateOne({ "profiles.service_id" : 400019, "emailid":"uqCdy@hotmail.com"}, { "$push": { "profiles.$.complaints”: {_id :complaintId}}});
+
+Deleting a user:
+db.users.deleteOne( { emailid : "2Q@msn.com" } )
+
+Displaying a user bill:
+db.users.find({emailid:'3Gx@aol.com'},{billing_date:1,status:'active',payment_method:1,emailid:1,_id:0});
+
+Aggregations and Find Queries:
+To find directors who have directed more than 1 movie
+
+db.movies.aggregate([{ "$group":{ "_id" : "$Director","count" : {"$sum" : 1}}}, {"$match" : { "count" : { "$gte" : 2}}}])
+
+To find which movies that were released between the years 2018 to 2020 
+db.movies.find({"Year": {"$gte": "2016", "$lte": "2018"}},{Title:1, Description:1, Year:1,_id:0}).pretty()
+
+Showing Deactivated Users
+db.users.find({"status":"Deactivated"},{ emailid : 1,name:1, status:1})
+
+Actors who have performed in more than 1 movie.
+ db.movies.aggregate([{ "$unwind" : "$Actors"},{ "$group":{ "_id" : "$Actors","count" : {"$sum" : 1}}}, {"$match" : { "count" : { "$gt" : 1}}}])
+
+Getting the user details who raised the service request
+ db.service_requests.aggregate([{"$lookup" : {"from" : "users", "localField" : "emailid", "foreignField" : "emailid","as" : "users"}}, {$project : {"users.password":0, "users.dob":0, "users.billing_date":0, "users.status":0, "users.profiles":0, "users.payment_method":0}}])
+
+ Top 5 rated movies
+db.movie.aggregate([{$sort:{Rating:-1}},{$limit:5},{$project:{"imdb_rank":1, "Title":1,"Rating":1,"Votes":1}}])
+
+Types of service complaints raised by the user with their counts:
+ db.service_requests.aggregate([{ "$group":{ "_id" : "$complaint_description","count" : {"$sum" : 1}}}])
+
+Generate the next bill due date:
+db.users.aggregate([{$project:{"next_bill_due":{$dateAdd:{startDate:"$billing_date", unit:"month", amount: 1}},name:1,billing_date:1,amount:{$literal:"$19.95"}}},{$sort:{billing_date:-1}},{$limit:5}])
+
+
+Daily service request counts :
+db.service_requests.aggregate([{ "$group":{ "_id" : "$date_of_complaint","count" : {"$sum" : 1}}}])
+
+ Movie language preferred by the user with count
+db.users.aggregate([{"$group":{"_id":"$preferred_language","count":{"$sum":1}}}])
+
+View profiles my list
+
+db.users.aggregate([{$project:{"profiles":1,"_id":0}},{$unwind:"$profiles"},{$unwind:"$profiles.profile_history"}, {$lookup:{from:"movies", localField:"profiles.profile_history.movie_id",foreignField:"_id", as:"movie_title"}}, {$project:{"profiles.profile_name":1,"movie_title.Title":1,"_id":0}}])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
